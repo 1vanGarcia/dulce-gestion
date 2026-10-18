@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dulce Gestión</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f9a8c0">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{--r:#f9a8c0;--r2:#fde4ec;--bg:#fff7f2;--c:#4a2c2a;--ok:#2e9e6a;--w:#e8a23a}
+*{box-sizing:border-box;margin:0}
+body{font:16px/1.4 'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--c);max-width:640px;margin:auto;padding:0 14px calc(110px + env(safe-area-inset-bottom))}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;min-height:44px;border-radius:14px;background:var(--r2);padding:0 14px}
+input,textarea{width:100%;min-height:48px;border:2px solid var(--r2);border-radius:14px;padding:10px 12px;background:#fff}
+input.err{border-color:#d33}
+header{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 0 8px}
+h1{font-size:1.5rem}#chip{font-size:.85rem;padding:6px 12px;border-radius:99px;background:#d6f3e4}
+#chip.off{background:#fde8c3}
+#stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.st{background:#fff;border-radius:16px;padding:12px;box-shadow:0 2px 8px #0001}.st b{display:block;font-size:1.3rem}.st span{font-size:.8rem;opacity:.7}
+#prep{background:var(--r2);border-radius:16px;padding:10px 12px;margin:8px 0;font-size:.95rem}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.chips button.on{background:var(--r);font-weight:700}
+h3{margin:16px 0 6px;font-size:.95rem;opacity:.7}
+.card{display:flex;justify-content:space-between;gap:10px;background:#fff;border-radius:16px;padding:12px;margin:8px 0;box-shadow:0 2px 8px #0001}
+.card.done{opacity:.55}.s{font-size:.9rem;opacity:.75}.r{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.pg{background:#fde8c3}.pg.ok{background:#d6f3e4}
+.r div{display:flex;gap:4px}.r div button{min-width:44px;padding:0}
+.vacio{text-align:center;padding:40px 10px;opacity:.7}
+#fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));min-height:56px;padding:0 22px;border-radius:99px;background:var(--r);font-weight:700;box-shadow:0 4px 14px #0003}
+#sheet,#aj{position:fixed;inset:0;background:#0006;display:none;align-items:flex-end;z-index:5}
+#sheet.on,#aj.on{display:flex}
+.hoja{background:var(--bg);width:100%;max-width:640px;margin:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+label{display:block;font-weight:700;margin-top:12px}
+.sw{display:flex;align-items:center;gap:10px}.sw input{width:28px;min-height:28px}
+.q{display:flex;gap:10px;align-items:center}.q b{min-width:30px;text-align:center;font-size:1.2rem}
+.acc{display:flex;gap:8px;margin-top:16px}.acc button{flex:1}.pri{background:var(--r);font-weight:700}
+#toasts{position:fixed;left:12px;right:12px;bottom:calc(88px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;z-index:9;pointer-events:none;max-width:616px;margin:auto}
+.t{pointer-events:auto;background:var(--c);color:#fff;padding:12px 14px;border-radius:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;animation:in .2s}
+.t.warn{background:#b57512}.t.error{background:#b3261e}.t button{background:#fff3;color:#fff;min-height:36px}
+@keyframes in{from{transform:translateY(12px);opacity:0}}
+</style></head><body>
+<header><h1>🍰 Dulce Gestión</h1><div><span id="chip">En línea</span> <button id="bAj" aria-label="Ajustes">⚙️</button></div></header>
+<div id="stats"></div><div id="prep"></div>
+<input id="q" type="search" placeholder="🔎 Buscar cliente, postre o nota">
+<div class="chips" id="fp"><button data-v="todos" class="on">Todos</button><button data-v="Pendiente">Pendientes</button><button data-v="Pagado">Pagados</button><button data-v="ent">Por entregar</button></div>
+<div class="chips" id="ff"><button data-v="hoy" class="on">Hoy</button><button data-v="man">Mañana</button><button data-v="todos">Todos</button></div>
+<div id="list"></div>
+<button id="fab">＋ Nuevo pedido</button>
+<div id="sheet"><div class="hoja" id="form"></div></div>
+<div id="aj"><div class="hoja">
+<h2>Ajustes</h2>
+<label>Postres (uno por línea: Nombre=precio)</label><textarea id="cp" rows="5"></textarea>
+<label>Ubicaciones (separadas por coma)</label><input id="cu">
+<div class="acc"><button id="bCsv">⬇️ Exportar CSV</button><button id="bGa" class="pri">Guardar</button></div>
+<div class="acc"><button id="bCe">Cerrar</button></div>
+</div></div>
+<div id="toasts" aria-live="polite" role="status"></div>
+<datalist id="cls"></datalist>
+<script>
+const $=s=>document.querySelector(s),L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let P=L('dulce_pedidos',[]),C=L('dulce_catalogo',{postres:[{n:'Postre Único',p:0}],ubic:['Multis','Pats','Bloques','San Vicente']}),F={q:'',pago:'todos',fecha:'hoy'},E=null,D={};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const iso=(o=0)=>new Date(Date.now()+o*864e5).toLocaleDateString('en-CA'),$$=n=>'$'+(+n).toFixed(2),tot=p=>p.cantidad*p.precio_unitario;
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2);
+const save=()=>S('dulce_pedidos',P),vib=()=>navigator.vibrate&&navigator.vibrate(30);
+function toast(m,t='ok',act,fn){const d=document.createElement('div');d.className='t '+t;d.innerHTML='<span>'+esc(m)+'</span>';
+ if(act){const b=document.createElement('button');b.textContent=act;b.onclick=()=>{fn();d.remove()};d.append(b)}
+ $('#toasts').append(d);while($('#toasts').children.length>3)$('#toasts').firstChild.remove();setTimeout(()=>d.remove(),act?6000:3500)}
+function render(){
+ const A=P.filter(p=>!p.eliminado_at),h=iso(),H=A.filter(p=>p.fecha_entrega==h),pend=A.filter(p=>p.pago!='Pagado');
+ $('#stats').innerHTML=[['Pedidos hoy',H.length],['Vendido hoy',$$(H.reduce((s,p)=>s+tot(p),0))],['Por cobrar',$$(pend.reduce((s,p)=>s+tot(p),0))+' · '+pend.length],['Por entregar hoy',H.filter(p=>!p.entregado).length]].map(([a,b])=>`<div class="st"><b>${b}</b><span>${a}</span></div>`).join('');
+ const m={};H.filter(p=>!p.entregado).forEach(p=>m[p.postre]=(m[p.postre]||0)+p.cantidad);
+ $('#prep').innerHTML=Object.keys(m).length?'🧁 <b>Para preparar hoy:</b> '+Object.entries(m).map(([k,v])=>v+' × '+esc(k)).join(', '):'🧁 Nada por preparar hoy';
+ $('#cls').innerHTML=[...new Set(A.map(p=>p.cliente))].map(c=>`<option value="${esc(c)}">`).join('');
+ const q=norm(F.q),man=iso(1);
+ const V=A.filter(p=>(F.pago=='todos'||(F.pago=='ent'?!p.entregado:p.pago==F.pago))&&(F.fecha=='todos'||p.fecha_entrega==(F.fecha=='hoy'?h:man))&&(!q||norm(p.cliente+' '+p.postre+' '+p.notas).includes(q)))
+  .sort((a,b)=>b.fecha_entrega.localeCompare(a.fecha_entrega)||b.created_at.localeCompare(a.created_at));
+ if(!V.length){$('#list').innerHTML=`<div class="vacio">${A.length?'No hay pedidos con esos filtros 🔍':'Aún no hay pedidos 🍰<br>¡Agrega el primero con el botón de abajo!'}</div>`;return}
+ let g='',o='';V.forEach(p=>{if(p.fecha_entrega!=g){g=p.fecha_entrega;o+=`<h3>${g==h?'Hoy':g==man?'Mañana':g.split('-').reverse().join('/')}</h3>`}
+  o+=`<div class="card ${p.entregado?'done':''}" data-id="${p.id}"><div><b>${esc(p.cliente)}</b><div class="s">${p.cantidad} × ${esc(p.postre)}${p.ubicacion?' · '+esc(p.ubicacion):''}</div>${p.notas?`<div class="s">📝 ${esc(p.notas)}</div>`:''}</div>
+  <div class="r"><b>${$$(tot(p))}</b><button data-a="pago" class="pg ${p.pago=='Pagado'?'ok':''}">${p.pago=='Pagado'?'🟢 Pagado':'🟡 Pendiente'}</button><div><button data-a="ent" aria-label="Entregado">${p.entregado?'↩️':'✔'}</button><button data-a="edit" aria-label="Editar">✏️</button><button data-a="del" aria-label="Eliminar">🗑</button></div></div></div>`});
+ $('#list').innerHTML=o}
+$('#list').onclick=e=>{const b=e.target.closest('button'),c=e.target.closest('.card');if(!b||!c)return;const p=P.find(x=>x.id==c.dataset.id),a=b.dataset.a;
+ if(a=='edit')return abrir(p.id);
+ if(a=='pago'){p.pago=p.pago=='Pagado'?'Pendiente':'Pagado';vib()}
+ if(a=='ent'){p.entregado=!p.entregado;vib()}
+ if(a=='del'){p.eliminado_at=new Date().toISOString();p.updated_at=p.eliminado_at;save();render();return toast('Pedido eliminado','info','Deshacer',()=>{p.eliminado_at=null;p.updated_at=new Date().toISOString();save();render()})}
+ p.updated_at=new Date().toISOString();save();render()};
+$('#q').oninput=e=>{F.q=e.target.value;render()};
+[['#fp','pago'],['#ff','fecha']].forEach(([s,k])=>$(s).onclick=e=>{const b=e.target.closest('button');if(!b)return;F[k]=b.dataset.v;[...$(s).children].forEach(x=>x.classList.toggle('on',x==b));render()});
+function abrir(id){E=id||null;const p=P.find(x=>x.id==id);
+ D=p?{...p}:{cliente:'',postre:C.postres[0].n,precio_unitario:C.postres[0].p,cantidad:1,ubicacion:localStorage.getItem('dulce_ult')||C.ubic[0],pago:'Pendiente',fecha_entrega:iso(),notas:''};
+ const ch=(k,arr)=>arr.map(([v,t])=>`<button type="button" data-k="${k}" data-v="${esc(v)}" class="${D[k]==v?'on':''}">${esc(t)}</button>`).join('');
+ $('#form').innerHTML=`<h2>${p?'Editar pedido':'Nuevo pedido'}</h2>
+ <label>¿Para quién es?</label><input id="cl" list="cls" autocomplete="off" value="${esc(D.cliente)}" placeholder="Nombre del cliente">
+ <label>Postre</label><div class="chips">${ch('postre',C.postres.map(x=>[x.n,x.n]))}</div>
+ <label>Precio unitario</label><input id="pr" type="number" inputmode="decimal" min="0" step="0.25" value="${D.precio_unitario}">
+ <label>Cantidad</label><div class="q"><button type="button" id="mn">−</button><b id="cn">${D.cantidad}</b><button type="button" id="ms">+</button><span>Total: <b id="tt"></b></span></div>
+ <label>Ubicación</label><div class="chips">${ch('ubicacion',C.ubic.map(x=>[x,x]))}</div>
+ <label class="sw"><input type="checkbox" id="pg" ${D.pago=='Pagado'?'checked':''}> ¿Ya pagó?</label>
+ <label>Entrega</label><div class="chips"><button type="button" id="dh">Hoy</button><button type="button" id="dm">Mañana</button></div><input id="fd" type="date" value="${D.fecha_entrega}">
+ <label>Notas (opcional)</label><input id="nt" value="${esc(D.notas)}" placeholder="Sabor, dedicatoria, sin nueces…">
+ <div class="acc"><button type="button" id="gc">Cancelar</button>${p?'':'<button type="button" id="go">Guardar y otro</button>'}<button type="button" id="gs" class="pri">Guardar</button></div>`;
+ const t=()=>{D.precio_unitario=+$('#pr').value||0;$('#cn').textContent=D.cantidad;$('#tt').textContent=$$(tot(D))};t();
+ $('#pr').oninput=t;$('#mn').onclick=()=>{D.cantidad=Math.max(1,D.cantidad-1);t()};$('#ms').onclick=()=>{D.cantidad++;t()};
+ $('#dh').onclick=()=>$('#fd').value=iso();$('#dm').onclick=()=>$('#fd').value=iso(1);
+ $('#form').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{D[b.dataset.k]=b.dataset.v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b));
+  if(b.dataset.k=='postre'){$('#pr').value=C.postres.find(x=>x.n==D.postre).p;t()}});
+ $('#gc').onclick=cerrar;$('#gs').onclick=()=>guardar(false);if($('#go'))$('#go').onclick=()=>guardar(true);
+ $('#sheet').classList.add('on');setTimeout(()=>$('#cl').focus(),50)}
+const cerrar=()=>$('#sheet').classList.remove('on');
+function guardar(otro){const c=$('#cl').value.trim();
+ if(!c){$('#cl').classList.add('err');toast('¿Para quién es el pedido?','warn');return}
+ const now=new Date().toISOString();
+ Object.assign(D,{cliente:c.slice(0,80),precio_unitario:+$('#pr').value||0,fecha_entrega:$('#fd').value||iso(),notas:$('#nt').value.trim(),pago:$('#pg').checked?'Pagado':'Pendiente',updated_at:now});
+ if(E)Object.assign(P.find(x=>x.id==E),D);else P.push({...D,id:uid(),entregado:false,created_at:now,eliminado_at:null});
+ localStorage.setItem('dulce_ult',D.ubicacion);save();render();toast('Pedido guardado ✅');vib();
+ if(otro)abrir();else cerrar()}
+$('#fab').onclick=()=>abrir();
+$('#bAj').onclick=()=>{$('#cp').value=C.postres.map(x=>x.n+'='+x.p).join('\n');$('#cu').value=C.ubic.join(', ');$('#aj').classList.add('on')};
+$('#bCe').onclick=()=>$('#aj').classList.remove('on');
+$('#bGa').onclick=()=>{const ps=$('#cp').value.split('\n').map(l=>{const[n,p]=l.split('=');return{n:(n||'').trim(),p:+p||0}}).filter(x=>x.n),u=$('#cu').value.split(',').map(x=>x.trim()).filter(Boolean);
+ if(!ps.length||!u.length)return toast('Agrega al menos un postre y una ubicación','warn');C={postres:ps,ubic:u};S('dulce_catalogo',C);$('#aj').classList.remove('on');toast('Ajustes guardados ✅')};
+$('#bCsv').onclick=()=>{const r=[['fecha_entrega','cliente','postre','cantidad','ubicacion','total','pago','entregado','notas']].concat(P.filter(p=>!p.eliminado_at).map(p=>[p.fecha_entrega,p.cliente,p.postre,p.cantidad,p.ubicacion,tot(p),p.pago,p.entregado?'Sí':'No',p.notas]));
+ const t='\ufeff'+r.map(x=>x.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='pedidos.csv';a.click()};
+const net=()=>{const c=$('#chip');c.textContent=navigator.onLine?'🟢 En línea':'🟠 Sin conexión · se guarda en tu celular';c.className=navigator.onLine?'':'off'};
+addEventListener('online',()=>{net();toast('Conexión recuperada','info')});addEventListener('offline',()=>{net();toast('Sin conexión: todo se guarda en tu celular','warn')});
+net();render();
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
