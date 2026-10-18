@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Dulce Gestión</title>
-<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f9a8c0">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Emy Bake Studio</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#f9a8c0"><meta name="apple-mobile-web-app-title" content="Emy Bake">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-:root{--r:#f9a8c0;--r2:#fde4ec;--bg:#fff7f2;--c:#4a2c2a;--ok:#2e9e6a;--w:#e8a23a}
+:root{--r:#f9a8c0;--r2:#fde4ec;--bg:#fdf3e7;--c:#4a2c2a;--ok:#2e9e6a;--w:#e8a23a}
 *{box-sizing:border-box;margin:0}
 body{font:16px/1.4 'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--c);max-width:640px;margin:auto;padding:0 14px calc(110px + env(safe-area-inset-bottom))}
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:0;min-height:44px;border-radius:14px;background:var(--r2);padding:0 14px}
 input,textarea{width:100%;min-height:48px;border:2px solid var(--r2);border-radius:14px;padding:10px 12px;background:#fff}
 input.err{border-color:#d33}
-header{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 0 8px}
-h1{font-size:1.5rem}#chip{font-size:.85rem;padding:6px 12px;border-radius:99px;background:#d6f3e4}
+header{display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 0 8px}
+h1{font-size:1.3rem;display:flex;align-items:center;gap:10px}h1 img{border-radius:50%}#chip{font-size:.85rem;padding:6px 12px;border-radius:99px;background:#d6f3e4}
 #chip.off{background:#fde8c3}
 #stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
 .st{background:#fff;border-radius:16px;padding:12px;box-shadow:0 2px 8px #0001}.st b{display:block;font-size:1.3rem}.st span{font-size:.8rem;opacity:.7}
@@ -40,7 +40,7 @@ label{display:block;font-weight:700;margin-top:12px}
 .t.warn{background:#b57512}.t.error{background:#b3261e}.t button{background:#fff3;color:#fff;min-height:36px}
 @keyframes in{from{transform:translateY(12px);opacity:0}}
 </style></head><body>
-<header><h1>🍰 Dulce Gestión</h1><div><span id="chip">En línea</span> <button id="bAj" aria-label="Ajustes">⚙️</button></div></header>
+<header><h1><img src="icons/logo.png" alt="" width="44" height="44"> Emy Bake Studio</h1><div><span id="chip">En línea</span> <button id="bAj" aria-label="Ajustes">⚙️</button></div></header>
 <div id="stats"></div><div id="prep"></div>
 <input id="q" type="search" placeholder="🔎 Buscar cliente, postre o nota">
 <div class="chips" id="fp"><button data-v="todos" class="on">Todos</button><button data-v="Pendiente">Pendientes</button><button data-v="Pagado">Pagados</button><button data-v="ent">Por entregar</button></div>
