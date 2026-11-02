@@ -39,95 +39,147 @@ label{display:block;font-weight:700;margin-top:12px}
 .t{pointer-events:auto;background:var(--c);color:#fff;padding:12px 14px;border-radius:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;animation:in .2s}
 .t.warn{background:#b57512}.t.error{background:#b3261e}.t button{background:#fff3;color:#fff;min-height:36px}
 @keyframes in{from{transform:translateY(12px);opacity:0}}
+select{width:100%;min-height:44px;border:2px solid var(--r2);border-radius:14px;padding:0 10px;background:#fff;font:inherit;color:inherit;margin:4px 0}
+.card{flex-direction:column}.top{display:flex;justify-content:space-between;gap:10px}.ac{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.ac button{min-width:44px;padding:0}
+#rs{position:fixed;inset:0;background:#0006;display:none;align-items:flex-end;z-index:5}#rs.on{display:flex}
+#rb{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.ln{display:grid;grid-template-columns:1fr auto 78px;gap:8px;align-items:center;margin:6px 0}.ln input{min-height:40px;padding:4px 8px}
+.row{display:flex;gap:8px}.row>*{flex:1}.mini{min-width:40px;padding:0}
+#lg{position:fixed;inset:0;background:var(--bg);display:none;z-index:20;padding:20px;overflow:auto}#lg.on{display:flex}.lgb{width:100%;max-width:420px;margin:auto}
 </style></head><body>
-<header><h1><img src="icons/logo.png" alt="" width="44" height="44"> Emy Bake Studio</h1><div><span id="chip">En línea</span> <button id="bAj" aria-label="Ajustes">⚙️</button></div></header>
+<header><h1><img src="icons/logo.png" alt="" width="44" height="44"> Emy Bake Studio</h1><div><span id="chip">En línea</span> <button id="bRs" title="Resumen">📊</button> <button id="bAj" title="Ajustes">⚙️</button></div></header>
 <div id="stats"></div><div id="prep"></div>
 <input id="q" type="search" placeholder="🔎 Buscar cliente, postre o nota">
 <div class="chips" id="fp"><button data-v="todos" class="on">Todos</button><button data-v="Pendiente">Pendientes</button><button data-v="Pagado">Pagados</button><button data-v="ent">Por entregar</button></div>
 <div class="chips" id="ff"><button data-v="hoy" class="on">Hoy</button><button data-v="man">Mañana</button><button data-v="todos">Todos</button></div>
+<select id="so"><option value="r">Orden: más recientes</option><option value="h">Orden: por hora</option><option value="c">Orden: por cliente</option></select>
 <div id="list"></div>
 <button id="fab">＋ Nuevo pedido</button>
 <div id="sheet"><div class="hoja" id="form"></div></div>
-<div id="aj"><div class="hoja">
-<h2>Ajustes</h2>
-<label>Postres (uno por línea: Nombre=precio)</label><textarea id="cp" rows="5"></textarea>
+<div id="rs"><div class="hoja"><h2>Resumen</h2><div class="chips" id="rc"><button data-v="7" class="on">Últimos 7 días</button><button data-v="m">Este mes</button></div><div id="rb"></div><p class="s">La ganancia usa el costo que anotes en Ajustes.</p><div class="acc"><button id="bRc">Cerrar</button></div></div></div>
+<div id="aj"><div class="hoja"><h2>Ajustes</h2>
+<label>Postres (uno por línea: Nombre=precio=costo)</label><textarea id="cp" rows="5"></textarea>
 <label>Ubicaciones (separadas por coma)</label><input id="cu">
-<div class="acc"><button id="bCsv">⬇️ Exportar CSV</button><button id="bGa" class="pri">Guardar</button></div>
-<div class="acc"><button id="bCe">Cerrar</button></div>
-</div></div>
-<div id="toasts" aria-live="polite" role="status"></div>
-<datalist id="cls"></datalist>
+<label>Código de país para WhatsApp (ej. 593)</label><input id="cc" inputmode="numeric">
+<div class="acc"><button id="bBk">💾 Guardar copia</button><button id="bRe">📂 Restaurar copia</button></div>
+<div class="acc"><button id="bCsv">⬇️ Exportar CSV</button><input id="fr" type="file" accept=".json" hidden></div>
+<div class="acc"><button id="bOut">Cerrar sesión</button></div><div class="acc"><button id="bCe">Cerrar</button><button id="bGa" class="pri">Guardar</button></div></div></div>
+<div id="lg"><div class="lgb"><img src="icons/logo.png" width="96" height="96" alt="" style="border-radius:50%;display:block;margin:auto"><h2 style="text-align:center">Emy Bake Studio</h2><label>Correo</label><input id="le" type="email" autocomplete="username"><label>Contraseña</label><input id="lp" type="password" autocomplete="current-password"><div class="acc"><button id="lgb" class="pri">Entrar</button></div></div></div>
+<div id="toasts" aria-live="polite" role="status"></div><datalist id="cls"></datalist>
+<script src="js/vendor/supabase.js"></script>
 <script>
+const SB_URL='https://dodtjyrfzislnmsubyfn.supabase.co',SB_KEY='sb_publishable_fOcXJkiRLZo68qR5lb4lEQ_feNR2lIB';
 const $=s=>document.querySelector(s),L=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-let P=L('dulce_pedidos',[]),C=L('dulce_catalogo',{postres:[{n:'Postre Único',p:0}],ubic:['Multis','Pats','Bloques','San Vicente']}),F={q:'',pago:'todos',fecha:'hoy'},E=null,D={};
+const mig=p=>{if(!p.items){const c=p.cantidad||1,pr=p.precio_unitario||0;p.items=[{n:p.postre||'Postre',c,p:pr,k:0}];p.abono=p.pago=='Pagado'?c*pr:0;p.telefono='';p.hora='';p._d=1}return p};
+let P=L('dulce_pedidos',[]).map(mig),C=Object.assign({postres:[{n:'Postre Único',p:0,k:0}],ubic:['Multis','Pats','Bloques','San Vicente'],cc:''},L('dulce_catalogo',{})),F={q:'',pago:'todos',fecha:'hoy',o:'r'},E=null,D={},R='7';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-const iso=(o=0)=>new Date(Date.now()+o*864e5).toLocaleDateString('en-CA'),$$=n=>'$'+(+n).toFixed(2),tot=p=>p.cantidad*p.precio_unitario;
+const iso=(o=0)=>new Date(Date.now()+o*864e5).toLocaleDateString('en-CA'),$$=n=>'$'+(+n).toFixed(2);
+const tot=p=>p.items.reduce((s,i)=>s+i.c*i.p,0),gan=p=>p.items.reduce((s,i)=>s+i.c*(i.p-(i.k||0)),0),debe=p=>p.pago=='Pagado'?0:Math.max(0,tot(p)-(p.abono||0)),res=p=>p.items.map(i=>i.c+' × '+i.n).join(', ');
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2);
-const save=()=>S('dulce_pedidos',P),vib=()=>navigator.vibrate&&navigator.vibrate(30);
+const save=()=>S('dulce_pedidos',P),vib=()=>navigator.vibrate&&navigator.vibrate(30),touch=p=>{p.updated_at=new Date().toISOString();p._d=1;sync()};
 function toast(m,t='ok',act,fn){const d=document.createElement('div');d.className='t '+t;d.innerHTML='<span>'+esc(m)+'</span>';
  if(act){const b=document.createElement('button');b.textContent=act;b.onclick=()=>{fn();d.remove()};d.append(b)}
  $('#toasts').append(d);while($('#toasts').children.length>3)$('#toasts').firstChild.remove();setTimeout(()=>d.remove(),act?6000:3500)}
 function render(){
  const A=P.filter(p=>!p.eliminado_at),h=iso(),H=A.filter(p=>p.fecha_entrega==h),pend=A.filter(p=>p.pago!='Pagado');
- $('#stats').innerHTML=[['Pedidos hoy',H.length],['Vendido hoy',$$(H.reduce((s,p)=>s+tot(p),0))],['Por cobrar',$$(pend.reduce((s,p)=>s+tot(p),0))+' · '+pend.length],['Por entregar hoy',H.filter(p=>!p.entregado).length]].map(([a,b])=>`<div class="st"><b>${b}</b><span>${a}</span></div>`).join('');
- const m={};H.filter(p=>!p.entregado).forEach(p=>m[p.postre]=(m[p.postre]||0)+p.cantidad);
+ $('#stats').innerHTML=[['Pedidos hoy',H.length],['Vendido hoy',$$(H.reduce((s,p)=>s+tot(p),0))],['Por cobrar',$$(pend.reduce((s,p)=>s+debe(p),0))+' · '+pend.length],['Por entregar hoy',H.filter(p=>!p.entregado).length]].map(([a,b])=>`<div class="st"><b>${b}</b><span>${a}</span></div>`).join('');
+ const m={};H.filter(p=>!p.entregado).forEach(p=>p.items.forEach(i=>m[i.n]=(m[i.n]||0)+i.c));
  $('#prep').innerHTML=Object.keys(m).length?'🧁 <b>Para preparar hoy:</b> '+Object.entries(m).map(([k,v])=>v+' × '+esc(k)).join(', '):'🧁 Nada por preparar hoy';
  $('#cls').innerHTML=[...new Set(A.map(p=>p.cliente))].map(c=>`<option value="${esc(c)}">`).join('');
- const q=norm(F.q),man=iso(1);
- const V=A.filter(p=>(F.pago=='todos'||(F.pago=='ent'?!p.entregado:p.pago==F.pago))&&(F.fecha=='todos'||p.fecha_entrega==(F.fecha=='hoy'?h:man))&&(!q||norm(p.cliente+' '+p.postre+' '+p.notas).includes(q)))
-  .sort((a,b)=>b.fecha_entrega.localeCompare(a.fecha_entrega)||b.created_at.localeCompare(a.created_at));
+ const q=norm(F.q),man=iso(1),cmp={r:(a,b)=>b.created_at.localeCompare(a.created_at),h:(a,b)=>(a.hora||'99').localeCompare(b.hora||'99'),c:(a,b)=>norm(a.cliente).localeCompare(norm(b.cliente))}[F.o];
+ const V=A.filter(p=>(F.pago=='todos'||(F.pago=='ent'?!p.entregado:F.pago=='Pagado'?p.pago=='Pagado':p.pago!='Pagado'))&&(F.fecha=='todos'||p.fecha_entrega==(F.fecha=='hoy'?h:man))&&(!q||norm(p.cliente+' '+res(p)+' '+p.notas).includes(q))).sort((a,b)=>b.fecha_entrega.localeCompare(a.fecha_entrega)||cmp(a,b));
  if(!V.length){$('#list').innerHTML=`<div class="vacio">${A.length?'No hay pedidos con esos filtros 🔍':'Aún no hay pedidos 🍰<br>¡Agrega el primero con el botón de abajo!'}</div>`;return}
  let g='',o='';V.forEach(p=>{if(p.fecha_entrega!=g){g=p.fecha_entrega;o+=`<h3>${g==h?'Hoy':g==man?'Mañana':g.split('-').reverse().join('/')}</h3>`}
-  o+=`<div class="card ${p.entregado?'done':''}" data-id="${p.id}"><div><b>${esc(p.cliente)}</b><div class="s">${p.cantidad} × ${esc(p.postre)}${p.ubicacion?' · '+esc(p.ubicacion):''}</div>${p.notas?`<div class="s">📝 ${esc(p.notas)}</div>`:''}</div>
-  <div class="r"><b>${$$(tot(p))}</b><button data-a="pago" class="pg ${p.pago=='Pagado'?'ok':''}">${p.pago=='Pagado'?'🟢 Pagado':'🟡 Pendiente'}</button><div><button data-a="ent" aria-label="Entregado">${p.entregado?'↩️':'✔'}</button><button data-a="edit" aria-label="Editar">✏️</button><button data-a="del" aria-label="Eliminar">🗑</button></div></div></div>`});
+  o+=`<div class="card ${p.entregado?'done':''}" data-id="${p.id}"><div class="top"><div><b>${esc(p.cliente)}</b><div class="s">${esc(res(p))}</div><div class="s">${p.hora?'🕒 '+p.hora+' · ':''}${esc(p.ubicacion||'')}</div>${p.notas?`<div class="s">📝 ${esc(p.notas)}</div>`:''}</div>
+  <div class="r"><b>${$$(tot(p))}</b><button data-a="pago" class="pg ${p.pago=='Pagado'?'ok':''}">${p.pago=='Pagado'?'🟢 Pagado':'🟡 '+(p.abono>0?'Debe '+$$(debe(p)):'Pendiente')}</button></div></div>
+  <div class="ac"><button data-a="wa" title="WhatsApp">💬</button><button data-a="rep" title="Repetir">🔁</button><button data-a="ent" title="Entregado">${p.entregado?'↩️':'✔'}</button><button data-a="edit" title="Editar">✏️</button><button data-a="del" title="Eliminar">🗑</button></div></div>`});
  $('#list').innerHTML=o}
+function wa(p){let d=(p.telefono||'').replace(/\D/g,'');if(!d)return toast('Este pedido no tiene teléfono. Agrégalo al editarlo','warn');
+ if(C.cc&&!d.startsWith(C.cc))d=C.cc+d.replace(/^0/,'');
+ const t=`Hola ${p.cliente} 🍰 Tu pedido (${res(p)}) está listo. Total: ${$$(tot(p))}${p.pago=='Pagado'?' · ¡Ya está pagado!':' · Falta por pagar: '+$$(debe(p))}. ¡Gracias! — Emy Bake Studio`;
+ window.open('https://wa.me/'+d+'?text='+encodeURIComponent(t),'_blank')}
 $('#list').onclick=e=>{const b=e.target.closest('button'),c=e.target.closest('.card');if(!b||!c)return;const p=P.find(x=>x.id==c.dataset.id),a=b.dataset.a;
- if(a=='edit')return abrir(p.id);
- if(a=='pago'){p.pago=p.pago=='Pagado'?'Pendiente':'Pagado';vib()}
+ if(a=='edit')return abrir(p.id);if(a=='rep')return abrir(p.id,1);if(a=='wa')return wa(p);
+ if(a=='pago'){if(p.pago=='Pagado'){p.pago='Pendiente';p.abono=0}else{p.pago='Pagado';p.abono=tot(p)}vib()}
  if(a=='ent'){p.entregado=!p.entregado;vib()}
- if(a=='del'){p.eliminado_at=new Date().toISOString();p.updated_at=p.eliminado_at;save();render();return toast('Pedido eliminado','info','Deshacer',()=>{p.eliminado_at=null;p.updated_at=new Date().toISOString();save();render()})}
- p.updated_at=new Date().toISOString();save();render()};
-$('#q').oninput=e=>{F.q=e.target.value;render()};
+ if(a=='del'){p.eliminado_at=new Date().toISOString();touch(p);save();render();return toast('Pedido eliminado','info','Deshacer',()=>{p.eliminado_at=null;touch(p);save();render()})}
+ touch(p);save();render()};
+$('#q').oninput=e=>{F.q=e.target.value;render()};$('#so').onchange=e=>{F.o=e.target.value;render()};
 [['#fp','pago'],['#ff','fecha']].forEach(([s,k])=>$(s).onclick=e=>{const b=e.target.closest('button');if(!b)return;F[k]=b.dataset.v;[...$(s).children].forEach(x=>x.classList.toggle('on',x==b));render()});
-function abrir(id){E=id||null;const p=P.find(x=>x.id==id);
- D=p?{...p}:{cliente:'',postre:C.postres[0].n,precio_unitario:C.postres[0].p,cantidad:1,ubicacion:localStorage.getItem('dulce_ult')||C.ubic[0],pago:'Pendiente',fecha_entrega:iso(),notas:''};
- const ch=(k,arr)=>arr.map(([v,t])=>`<button type="button" data-k="${k}" data-v="${esc(v)}" class="${D[k]==v?'on':''}">${esc(t)}</button>`).join('');
- $('#form').innerHTML=`<h2>${p?'Editar pedido':'Nuevo pedido'}</h2>
+function abrir(id,rep){E=rep?null:id||null;const p=P.find(x=>x.id==id);
+ D=p?JSON.parse(JSON.stringify(p)):{cliente:'',telefono:'',items:[],ubicacion:localStorage.getItem('dulce_ult')||C.ubic[0],pago:'Pendiente',abono:0,fecha_entrega:iso(),hora:'',notas:''};
+ if(rep)Object.assign(D,{pago:'Pendiente',abono:0,fecha_entrega:iso()});
+ $('#form').innerHTML=`<h2>${E?'Editar pedido':rep?'Repetir pedido':'Nuevo pedido'}</h2>
  <label>¿Para quién es?</label><input id="cl" list="cls" autocomplete="off" value="${esc(D.cliente)}" placeholder="Nombre del cliente">
- <label>Postre</label><div class="chips">${ch('postre',C.postres.map(x=>[x.n,x.n]))}</div>
- <label>Precio unitario</label><input id="pr" type="number" inputmode="decimal" min="0" step="0.25" value="${D.precio_unitario}">
- <label>Cantidad</label><div class="q"><button type="button" id="mn">−</button><b id="cn">${D.cantidad}</b><button type="button" id="ms">+</button><span>Total: <b id="tt"></b></span></div>
- <label>Ubicación</label><div class="chips">${ch('ubicacion',C.ubic.map(x=>[x,x]))}</div>
- <label class="sw"><input type="checkbox" id="pg" ${D.pago=='Pagado'?'checked':''}> ¿Ya pagó?</label>
- <label>Entrega</label><div class="chips"><button type="button" id="dh">Hoy</button><button type="button" id="dm">Mañana</button></div><input id="fd" type="date" value="${D.fecha_entrega}">
+ <label>WhatsApp (opcional)</label><input id="tl" type="tel" inputmode="tel" value="${esc(D.telefono)}" placeholder="Ej. 0991234567">
+ <label>Toca para agregar postres</label><div class="chips" id="pc">${C.postres.map((x,i)=>`<button type="button" data-i="${i}">+ ${esc(x.n)}</button>`).join('')}</div><div id="its"></div><div>Total: <b id="tt"></b></div>
+ <label>Ubicación</label><div class="chips" id="uc">${C.ubic.map(x=>`<button type="button" data-v="${esc(x)}" class="${D.ubicacion==x?'on':''}">${esc(x)}</button>`).join('')}</div>
+ <div class="row"><div><label>Entrega</label><input id="fd" type="date" value="${D.fecha_entrega}"></div><div><label>Hora</label><input id="hr" type="time" value="${D.hora||''}"></div></div>
+ <div class="chips"><button type="button" id="dh">Hoy</button><button type="button" id="dm">Mañana</button></div>
+ <label class="sw"><input type="checkbox" id="pg" ${D.pago=='Pagado'?'checked':''}> ¿Ya pagó completo?</label>
+ <div id="ab"><label>Abono (lo que ya pagó)</label><input id="ao" type="number" inputmode="decimal" min="0" step="0.25" value="${D.abono||0}"></div>
  <label>Notas (opcional)</label><input id="nt" value="${esc(D.notas)}" placeholder="Sabor, dedicatoria, sin nueces…">
- <div class="acc"><button type="button" id="gc">Cancelar</button>${p?'':'<button type="button" id="go">Guardar y otro</button>'}<button type="button" id="gs" class="pri">Guardar</button></div>`;
- const t=()=>{D.precio_unitario=+$('#pr').value||0;$('#cn').textContent=D.cantidad;$('#tt').textContent=$$(tot(D))};t();
- $('#pr').oninput=t;$('#mn').onclick=()=>{D.cantidad=Math.max(1,D.cantidad-1);t()};$('#ms').onclick=()=>{D.cantidad++;t()};
- $('#dh').onclick=()=>$('#fd').value=iso();$('#dm').onclick=()=>$('#fd').value=iso(1);
- $('#form').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{D[b.dataset.k]=b.dataset.v;b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b));
-  if(b.dataset.k=='postre'){$('#pr').value=C.postres.find(x=>x.n==D.postre).p;t()}});
+ <div class="acc"><button type="button" id="gc">Cancelar</button>${E?'':'<button type="button" id="go">Guardar y otro</button>'}<button type="button" id="gs" class="pri">Guardar</button></div>`;
+ const t=()=>{$('#tt').textContent=$$(tot(D));$('#ab').style.display=$('#pg').checked?'none':'block'};
+ const it=()=>{$('#its').innerHTML=D.items.map((x,i)=>`<div class="ln"><span>${esc(x.n)}</span><span class="q"><button type="button" data-m="-" data-i="${i}" class="mini">−</button><b>${x.c}</b><button type="button" data-m="+" data-i="${i}" class="mini">+</button></span><input data-p="${i}" type="number" inputmode="decimal" min="0" step="0.25" value="${x.p}" aria-label="Precio"></div>`).join('')||'<div class="s">Aún no hay postres en este pedido</div>';t()};
+ $('#pc').onclick=e=>{const b=e.target.closest('button');if(!b)return;const x=C.postres[b.dataset.i],f=D.items.find(y=>y.n==x.n);f?f.c++:D.items.push({n:x.n,c:1,p:x.p,k:x.k||0});it()};
+ $('#its').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const i=D.items[b.dataset.i];i.c+=b.dataset.m=='+'?1:-1;if(i.c<1)D.items.splice(b.dataset.i,1);it()};
+ $('#its').oninput=e=>{if(e.target.dataset.p!=null){D.items[e.target.dataset.p].p=+e.target.value||0;t()}};
+ $('#uc').onclick=e=>{const b=e.target.closest('button');if(!b)return;D.ubicacion=b.dataset.v;[...$('#uc').children].forEach(x=>x.classList.toggle('on',x==b))};
+ $('#pg').onchange=t;$('#dh').onclick=()=>$('#fd').value=iso();$('#dm').onclick=()=>$('#fd').value=iso(1);
  $('#gc').onclick=cerrar;$('#gs').onclick=()=>guardar(false);if($('#go'))$('#go').onclick=()=>guardar(true);
- $('#sheet').classList.add('on');setTimeout(()=>$('#cl').focus(),50)}
+ it();$('#sheet').classList.add('on');setTimeout(()=>$('#cl').focus(),50)}
 const cerrar=()=>$('#sheet').classList.remove('on');
 function guardar(otro){const c=$('#cl').value.trim();
- if(!c){$('#cl').classList.add('err');toast('¿Para quién es el pedido?','warn');return}
- const now=new Date().toISOString();
- Object.assign(D,{cliente:c.slice(0,80),precio_unitario:+$('#pr').value||0,fecha_entrega:$('#fd').value||iso(),notas:$('#nt').value.trim(),pago:$('#pg').checked?'Pagado':'Pendiente',updated_at:now});
- if(E)Object.assign(P.find(x=>x.id==E),D);else P.push({...D,id:uid(),entregado:false,created_at:now,eliminado_at:null});
+ if(!c){$('#cl').classList.add('err');return toast('¿Para quién es el pedido?','warn')}
+ if(!D.items.length)return toast('Agrega al menos un postre 🍰','warn');
+ const T=tot(D),ab=+$('#ao').value||0,full=$('#pg').checked||(T>0&&ab>=T);
+ Object.assign(D,{cliente:c.slice(0,80),telefono:$('#tl').value.trim(),fecha_entrega:$('#fd').value||iso(),hora:$('#hr').value,notas:$('#nt').value.trim(),pago:full?'Pagado':'Pendiente',abono:full?T:ab});touch(D);
+ if(E)Object.assign(P.find(x=>x.id==E),D);else P.push({...D,id:uid(),entregado:false,created_at:D.updated_at,eliminado_at:null});
  localStorage.setItem('dulce_ult',D.ubicacion);save();render();toast('Pedido guardado ✅');vib();
  if(otro)abrir();else cerrar()}
 $('#fab').onclick=()=>abrir();
-$('#bAj').onclick=()=>{$('#cp').value=C.postres.map(x=>x.n+'='+x.p).join('\n');$('#cu').value=C.ubic.join(', ');$('#aj').classList.add('on')};
+function resumen(){const A=P.filter(p=>!p.eliminado_at),h=iso(),d0=R=='m'?h.slice(0,8)+'01':iso(-6),V=A.filter(p=>p.fecha_entrega>=d0&&p.fecha_entrega<=h),sum=f=>V.reduce((s,p)=>s+f(p),0),m={},u={};
+ V.forEach(p=>{p.items.forEach(i=>m[i.n]=(m[i.n]||0)+i.c);const l=p.ubicacion||'—';u[l]=(u[l]||0)+1});
+ const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0],tp=top(m),tu=top(u);
+ $('#rb').innerHTML=[['Pedidos',V.length],['Ventas',$$(sum(tot))],['Cobrado',$$(sum(p=>p.pago=='Pagado'?tot(p):(p.abono||0)))],['Por cobrar',$$(sum(debe))],['Ganancia estimada',$$(sum(gan))],['Postre estrella',tp?tp[0]+' ('+tp[1]+')':'—'],['Lugar con más pedidos',tu?tu[0]+' ('+tu[1]+')':'—']].map(([a,b])=>`<div class="st"><b>${esc(b)}</b><span>${a}</span></div>`).join('')}
+$('#bRs').onclick=()=>{resumen();$('#rs').classList.add('on')};$('#bRc').onclick=()=>$('#rs').classList.remove('on');
+$('#rc').onclick=e=>{const b=e.target.closest('button');if(!b)return;R=b.dataset.v;[...$('#rc').children].forEach(x=>x.classList.toggle('on',x==b));resumen()};
+$('#bAj').onclick=()=>{$('#cp').value=C.postres.map(x=>x.n+'='+x.p+'='+(x.k||0)).join('\n');$('#cu').value=C.ubic.join(', ');$('#cc').value=C.cc||'';$('#aj').classList.add('on')};
 $('#bCe').onclick=()=>$('#aj').classList.remove('on');
-$('#bGa').onclick=()=>{const ps=$('#cp').value.split('\n').map(l=>{const[n,p]=l.split('=');return{n:(n||'').trim(),p:+p||0}}).filter(x=>x.n),u=$('#cu').value.split(',').map(x=>x.trim()).filter(Boolean);
- if(!ps.length||!u.length)return toast('Agrega al menos un postre y una ubicación','warn');C={postres:ps,ubic:u};S('dulce_catalogo',C);$('#aj').classList.remove('on');toast('Ajustes guardados ✅')};
-$('#bCsv').onclick=()=>{const r=[['fecha_entrega','cliente','postre','cantidad','ubicacion','total','pago','entregado','notas']].concat(P.filter(p=>!p.eliminado_at).map(p=>[p.fecha_entrega,p.cliente,p.postre,p.cantidad,p.ubicacion,tot(p),p.pago,p.entregado?'Sí':'No',p.notas]));
- const t='\ufeff'+r.map(x=>x.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='pedidos.csv';a.click()};
+$('#bGa').onclick=()=>{const ps=$('#cp').value.split('\n').map(l=>{const[n,p,k]=l.split('=');return{n:(n||'').trim(),p:+p||0,k:+k||0}}).filter(x=>x.n),u=$('#cu').value.split(',').map(x=>x.trim()).filter(Boolean);
+ if(!ps.length||!u.length)return toast('Agrega al menos un postre y una ubicación','warn');C={postres:ps,ubic:u,cc:$('#cc').value.replace(/\D/g,'')};S('dulce_catalogo',C);$('#aj').classList.remove('on');toast('Ajustes guardados ✅')};
+function dl(t,n,m){const f=new File(['\ufeff'+t],n,{type:m});if(navigator.canShare&&navigator.canShare({files:[f]}))return navigator.share({files:[f]}).catch(()=>{});const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=n;a.click()}
+const bk=()=>{dl(JSON.stringify({app:'emybake',v:2,fecha:new Date().toISOString(),pedidos:P,catalogo:C}),'copia-emybake-'+iso()+'.json','application/json');localStorage.setItem('dulce_bk',Date.now());toast('Copia lista 💾')};
+$('#bBk').onclick=bk;$('#bRe').onclick=()=>$('#fr').click();
+$('#fr').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{try{const d=JSON.parse(t.replace(/^\ufeff/,''));if(!Array.isArray(d.pedidos))throw 0;let n=0;
+ d.pedidos.map(mig).forEach(x=>{x._d=1;const y=P.find(z=>z.id==x.id);if(!y){P.push(x);n++}else if((x.updated_at||'')>(y.updated_at||'')){Object.assign(y,x);n++}});
+ if(d.catalogo){C=Object.assign(C,d.catalogo);S('dulce_catalogo',C)}save();render();sync();toast('Copia restaurada: '+n+' pedidos ✅')}catch{toast('Ese archivo no parece una copia válida','error')}e.target.value=''})};
+$('#bCsv').onclick=()=>{const r=[['fecha_entrega','hora','cliente','telefono','pedido','ubicacion','total','abono','pago','ganancia','entregado','notas']].concat(P.filter(p=>!p.eliminado_at).map(p=>[p.fecha_entrega,p.hora,p.cliente,p.telefono,res(p),p.ubicacion,tot(p),p.pago=='Pagado'?tot(p):p.abono||0,p.pago,gan(p),p.entregado?'Sí':'No',p.notas]));
+ dl(r.map(x=>x.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'),'pedidos.csv','text/csv')};
 const net=()=>{const c=$('#chip');c.textContent=navigator.onLine?'🟢 En línea':'🟠 Sin conexión · se guarda en tu celular';c.className=navigator.onLine?'':'off'};
-addEventListener('online',()=>{net();toast('Conexión recuperada','info')});addEventListener('offline',()=>{net();toast('Sin conexión: todo se guarda en tu celular','warn')});
-net();render();
+addEventListener('online',()=>{est();toast('Conexión recuperada','info');sync()});addEventListener('offline',()=>{est();toast('Sin conexión: todo se guarda en tu celular','warn')});
+let sb,st,busy=0,warned=0;try{sb=supabase.createClient(SB_URL,SB_KEY)}catch{}
+const pend=()=>P.filter(p=>p._d).length;
+function est(t){const c=$('#chip'),o=!navigator.onLine;c.textContent=t||(o?'🟠 Sin conexión · se guarda en tu celular':pend()?'🟠 '+pend()+' por sincronizar':'🟢 En línea · todo guardado');c.className=!t&&(o||pend())?'off':''}
+function sync(){clearTimeout(st);st=setTimeout(doSync,400)}
+async function doSync(){if(!sb||busy||!navigator.onLine)return est();
+ try{const{data:{session}}=await sb.auth.getSession();if(!session){$('#lg').classList.add('on');return est()}}catch{return est()}
+ busy=1;est('🔵 Sincronizando…');
+ try{if(!localStorage.dulce_sync)P.forEach(p=>p._d=1);
+  const up=P.filter(p=>p._d),rows=up.map(p=>({id:p.id,cliente:p.cliente,telefono:p.telefono||null,items:p.items,ubicacion:p.ubicacion||null,abono:p.abono||0,pago:p.pago,entregado:!!p.entregado,fecha_entrega:p.fecha_entrega,hora:p.hora||null,notas:p.notas||null,created_at:p.created_at,updated_at:p.updated_at,eliminado_at:p.eliminado_at||null}));
+  if(rows.length){const{error}=await sb.from('pedidos').upsert(rows);if(error)throw error;up.forEach(p=>{if(p.updated_at==rows.find(r=>r.id==p.id).updated_at)delete p._d})}
+  const since=localStorage.dulce_sync||'1970-01-01T00:00:00Z',{data,error}=await sb.from('pedidos').select('*').gt('updated_at',since);if(error)throw error;
+  let mx=since;data.forEach(r=>{const y=P.find(p=>p.id==r.id),f={...r,abono:+r.abono};if(new Date(r.updated_at)>new Date(mx))mx=r.updated_at;
+   if(!y)P.push(mig(f));else if(!y._d&&new Date(r.updated_at)>new Date(y.updated_at))Object.assign(y,f)});
+  localStorage.dulce_sync=mx;save();warned=0}
+ catch(e){console.warn(e);if(!warned){warned=1;toast(e&&e.code=='42501'?'Tu usuario aún no está autorizado para sincronizar':'No se pudo sincronizar; se reintentará solo','warn')}}
+ busy=0;save();render();est()}
+$('#lgb').onclick=async()=>{if(!sb)return;const{error}=await sb.auth.signInWithPassword({email:$('#le').value.trim(),password:$('#lp').value});if(error)return toast('Correo o contraseña incorrectos','error');$('#lg').classList.remove('on');toast('¡Bienvenida! 🍰');doSync()};
+$('#bOut').onclick=async()=>{if(sb)await sb.auth.signOut();location.reload()};
+est();save();render();doSync();setInterval(sync,60000);addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+setTimeout(()=>{if(P.length&&Date.now()-(+localStorage.dulce_bk||0)>6048e5)toast('Hace tiempo que no guardas una copia 💾','info','Guardar',bk)},2500);
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script></body></html>
